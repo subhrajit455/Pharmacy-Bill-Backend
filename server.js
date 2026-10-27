@@ -7,9 +7,6 @@ const connectDB = require('./config/db');
 // Load env vars
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
-
 const app = express();
 
 // Middleware
@@ -24,6 +21,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'Pharmacy Billing API',
+    database: 'MongoDB Atlas',
     time: new Date().toISOString(),
   });
 });
@@ -51,11 +49,16 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Pharmacy Billing Server running on port ${PORT}`);
-});
+
+const startServer = async () => {
+  await connectDB();
+  app.listen(PORT, () => {
+    console.log(`🚀 Pharmacy Billing Server running on port ${PORT}`);
+  });
+};
+
+startServer();
 
 process.on('unhandledRejection', (err) => {
   console.error(`Unhandled Rejection: ${err.message}`);
 });
-

@@ -1,41 +1,21 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
+
+// Configure public DNS servers to ensure Node.js c-ares reliably resolves MongoDB Atlas SRV records on Windows
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (e) {
+  // fallback to system default
+}
 
 const connectDB = async () => {
-  let uri = process.env.MONGODB_URI;
-
-  // Check if user still has the placeholder <db_password>
-  if (uri && uri.includes('<db_password>')) {
-    console.warn('\n⚠️ WARNING: Your MONGODB_URI in backend/.env contains "<db_password>".');
-    console.warn('⚠️ Please replace <db_password> with your MongoDB Atlas password to connect to your Atlas cluster.');
-    if (process.env.FALLBACK_MONGODB_URI) {
-      console.log(`ℹ️ Attempting connection to local MongoDB fallback: ${process.env.FALLBACK_MONGODB_URI}`);
-      uri = process.env.FALLBACK_MONGODB_URI;
-    }
-  }
-
   try {
-    const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 6000,
-    });
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
     console.log(`✅ MongoDB Connected Successfully: ${conn.connection.host} (DB: ${conn.connection.name})`);
   } catch (error) {
-    console.error(`❌ MongoDB Primary Connection Failed: ${error.message}`);
-    // If Atlas failed, try fallback if we haven't already
-    if (uri !== process.env.FALLBACK_MONGODB_URI && process.env.FALLBACK_MONGODB_URI) {
-      try {
-        console.log(`🔄 Trying fallback connection: ${process.env.FALLBACK_MONGODB_URI}`);
-        const fallbackConn = await mongoose.connect(process.env.FALLBACK_MONGODB_URI, {
-          serverSelectionTimeoutMS: 5000,
-        });
-        console.log(`✅ Fallback MongoDB Connected: ${fallbackConn.connection.host}`);
-        return;
-      } catch (fbErr) {
-        console.error(`❌ Fallback MongoDB Connection also failed: ${fbErr.message}`);
-      }
-    }
-    console.error('👉 Tip: Ensure MongoDB service is running or check your MongoDB Atlas password & network access whitelist (0.0.0.0/0).');
+    console.error(`❌ MongoDB Connection Error: ${error.message}`);
+    process.exit(1);
   }
 };
 
 module.exports = connectDB;
-
